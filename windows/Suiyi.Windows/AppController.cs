@@ -95,6 +95,13 @@ internal sealed class AppController : IDisposable
             main.Status.Text = string.Join("\n", input.RegistrationErrors);
     }
 
+    internal void ShowMainWindow()
+    {
+        if (disposed) return;
+        if (settings.ApiKey.Length == 0) main.ShowSettings();
+        else main.ShowContinuous();
+    }
+
     private void SetAutomatic(bool enabled)
     {
         if (enabled && settings.ApiKey.Length == 0)

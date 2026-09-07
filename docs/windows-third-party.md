@@ -1,13 +1,13 @@
 # Windows 包第三方许可证
 
-核验日期：2026-09-07。许可证文本放在 `windows/Suiyi.Windows/licenses/`，随自包含发布包一起复制；语言包目录原有的 `tessdata/LICENSE` 也应保留。
+核验日期：2026-09-07；2026-09-08 补充同一固定版本的简体中文语言数据。许可证文本放在 `windows/Suiyi.Windows/licenses/`，随自包含发布包一起复制；语言包目录原有的 `tessdata/LICENSE` 也应保留。
 
 | 组件 | 本次版本依据 | 随包文本 |
 | --- | --- | --- |
 | Tesseract .NET wrapper | 本地 NuGet `Tesseract/5.2.0/tesseract.nuspec`，作者 Charles Weld，Apache-2.0 | `Tesseract-DotNet-5.2.0-LICENSE.txt`、固定版本 README 版权说明 |
 | Tesseract OCR 引擎 | NuGet 中的 `tesseract50.dll`；wrapper 固定版本更新记录说明升级到 5.2 | `Tesseract-OCR-5.2.0-LICENSE.txt`，Apache-2.0 |
 | Leptonica | NuGet 原生文件 `leptonica-1.82.0.dll` | `Leptonica-1.82.0-LICENSE.txt`，BSD-2-Clause |
-| tessdata_fast 英俄语言数据 | 官方 `4.1.0` 标签的 `eng.traineddata`、`rus.traineddata` | `Tessdata-Fast-4.1.0-LICENSE.txt`，Apache-2.0 |
+| tessdata_fast 英文、俄文、简体中文语言数据 | 官方 `4.1.0` 标签的 `eng.traineddata`、`rus.traineddata`、`chi_sim.traineddata`；下载记录见 [OCR 模型来源](windows-ocr-assets.md) | `Tessdata-Fast-4.1.0-LICENSE.txt`，Apache-2.0 |
 | InteropDotNet | wrapper `5.2.0` 固定源码内的版权行及 MIT 声明 | `InteropDotNet-MIT.txt`，保留 Andrey Akinshin 版权和标准 MIT 全文 |
 | .NET Core runtime、Windows Desktop runtime | 本地自包含恢复包 `10.0.11`，两份 nuspec 均声明 MIT | `DotNet-Runtime-10.0.11-LICENSE.txt`、`DotNet-Runtime-10.0.11-THIRD-PARTY-NOTICES.txt`、`DotNet-WindowsDesktop-10.0.11-LICENSE.txt` |
 

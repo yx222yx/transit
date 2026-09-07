@@ -26,10 +26,10 @@ public sealed class OcrService : IDisposable
         token.ThrowIfCancellationRequested();
         if (bitmap is null) throw new InvalidOperationException("未取得截图，请重新框选屏幕区域。");
         string dataDirectory = Path.Combine(AppContext.BaseDirectory, "tessdata");
-        foreach (string language in new[] { "eng", "rus" })
+        foreach (string language in new[] { "eng", "rus", "chi_sim" })
         {
             if (!File.Exists(Path.Combine(dataDirectory, language + ".traineddata")))
-                throw new InvalidOperationException("缺少本地 OCR 语言包。请重新解压完整程序包，确认 tessdata 文件夹内同时存在 eng.traineddata 和 rus.traineddata。");
+                throw new InvalidOperationException("缺少本地 OCR 语言包。请确认 tessdata 文件夹内存在 eng.traineddata、rus.traineddata 和 chi_sim.traineddata，再重新构建或使用完整程序目录。");
         }
 
         byte[] bytes;
@@ -54,7 +54,7 @@ public sealed class OcrService : IDisposable
             {
                 // Each operation owns its engine, page and Pix, so parallel or cancelled calls
                 // never dispose an engine while a different call is using it.
-                using var engine = new TesseractEngine(dataDirectory, "eng+rus", EngineMode.LstmOnly);
+                using var engine = new TesseractEngine(dataDirectory, "eng+rus+chi_sim", EngineMode.LstmOnly);
                 using var pix = Pix.LoadFromMemory(bytes);
                 token.ThrowIfCancellationRequested();
                 using var page = engine.Process(pix, PageSegMode.Auto);
@@ -66,7 +66,7 @@ public sealed class OcrService : IDisposable
                     {
                         string text = iterator.GetText(PageIteratorLevel.Para)?.Trim() ?? "";
                         if (text.Length > 0 && iterator.TryGetBoundingBox(PageIteratorLevel.Para, out var bounds))
-                            blocks.Add(new OcrBlock(text, new Rectangle(bounds.X1, bounds.Y1, bounds.Width, bounds.Height)));
+                            blocks.Add(new OcrBlock(text, new Rectangle(bounds.X1, bounds.Y1, bounds.Width, bounds.Height), iterator.GetConfidence(PageIteratorLevel.Para)));
                     } while (iterator.Next(PageIteratorLevel.Para));
                 }
                 // Native recognition is synchronous; cancellation discards its eventual result.

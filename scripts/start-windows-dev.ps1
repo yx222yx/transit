@@ -27,4 +27,4 @@ if (Test-Path -LiteralPath $localSdk) {
     $start.EnvironmentVariables['DOTNET_ROOT_X64'] = Split-Path -Parent $localSdk
 }
 $process = [Diagnostics.Process]::Start($start)
-Write-Output ('Development app started (PID ' + $process.Id + '): ' + $assembly)
+Write-Output ('Requested development app open (launcher PID ' + $process.Id + '): ' + $assembly)

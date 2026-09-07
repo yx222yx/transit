@@ -2,7 +2,7 @@
 
 一个持续迭代的英俄屏幕翻译工具，将英语、俄语翻译为简体中文。
 
-当前发布基线为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。[持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md) 已确认，正在开发 [阶段 A：单选区持续覆盖翻译](https://github.com/yx222yx/transit/issues/2)，以 Lenta 购物网站进行人工试用。阶段 A 尚待人工验收；分析侧栏、配置保存和图片直传在后续阶段实现。用户明确确认定版前不生成新便携发布包。
+当前发布基线为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。[持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md) 已确认，[阶段 A：单选区持续覆盖翻译](https://github.com/yx222yx/transit/issues/2) 已提供开发试用，以 Lenta 购物网站进行人工验收。分析侧栏、配置保存和图片直传在后续阶段实现。用户明确确认定版前不生成新便携发布包。
 
 项目仓库：[yx222yx/transit](https://github.com/yx222yx/transit)。
 
@@ -49,7 +49,7 @@ powershell -File .\scripts\start-windows-dev.ps1
 powershell -File .\scripts\start-windows-dev.ps1 -SkipBuild
 ```
 
-开发版从 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/` 启动，标题标明开发试用，使用独立实例；根目录的 `随译.exe` 和 `app/` 仍为已有发布版。源码仓库不包含生成的 EXE；从 GitHub 获取源码后运行上述开发试用命令。现有发布及打包命令见 [开发说明](docs/development.md)，明确确认定版后才执行。
+开发版从 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/` 启动，标题标明开发试用，使用独立实例；完成构建后也可双击 `scripts/start-windows-dev.cmd` 打开。根目录的 `随译.exe` 和 `app/` 仍为已有发布版。源码仓库不包含生成的 EXE；从 GitHub 获取源码后运行上述开发试用命令。现有发布及打包命令见 [开发说明](docs/development.md)，明确确认定版后才执行。
 
 网页原型需要 Node.js 24 或更新版本：
 

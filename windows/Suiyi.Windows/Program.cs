@@ -14,10 +14,12 @@ internal static class Program
         if (args.Length > 0 && args[0] == "--self-test") return SelfTest.Run(args);
         if (args.Length > 0 && args[0] == "--reading-self-test") return ReadingSessionSelfTest.RunAsync().GetAwaiter().GetResult();
         IsDevelopment = Array.IndexOf(args, "--dev") >= 0;
+        using var activation = IsDevelopment ? new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Suiyi.Windows.Development.Show") : null;
         using var singleInstance = new Mutex(true, IsDevelopment ? @"Local\Suiyi.Windows.Development" : @"Local\Suiyi.Windows.0.3", out bool created);
         if (!created)
         {
-            MessageBox.Show("随译已经在运行，请从任务栏右侧的托盘图标打开。", "随译");
+            if (activation is not null) activation.Set();
+            else MessageBox.Show("随译已经在运行，请从任务栏右侧的托盘图标打开。", "随译");
             return 0;
         }
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -28,7 +30,13 @@ internal static class Program
         };
         using var controller = new AppController(app);
         controller.Start();
-        return app.Run();
+        RegisteredWaitHandle? activationWait = activation is null ? null : ThreadPool.RegisterWaitForSingleObject(activation, (_, _) =>
+        {
+            if (!app.Dispatcher.HasShutdownStarted)
+                app.Dispatcher.BeginInvoke(new Action(controller.ShowMainWindow));
+        }, null, Timeout.Infinite, false);
+        try { return app.Run(); }
+        finally { activationWait?.Unregister(null); }
     }
     internal static bool IsDevelopment { get; private set; }
 }
