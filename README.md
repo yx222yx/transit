@@ -2,7 +2,7 @@
 
 一个持续迭代的英俄屏幕翻译工具，将英语、俄语翻译为简体中文。
 
-当前版本为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。后续第二版、第三版继续根据实际需求增加功能，具体范围与验收条件逐轮确定。Windows 为当前开发重点，Android 保留为后续方向。
+当前版本为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。下一轮已确认 [持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md)，以 Lenta 购物网站进行人工试用；这些新功能尚未实现。用户明确确认定版前不生成新便携发布包。
 
 项目仓库：[yx222yx/transit](https://github.com/yx222yx/transit)。
 
