@@ -1,0 +1,7 @@
+{
+  "mode": "deepseek",
+  "baseUrl": "https://api.deepseek.com",
+  "model": "deepseek-v4-flash",
+  "apiKey": "在应用的 API 配置窗口中填写，不要把真实 Key 提交到源码",
+  "timeoutMs": 3000
+}

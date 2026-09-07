@@ -1,0 +1,8 @@
+{
+  "name": "suiyi-interface-prototype",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Throwaway interface prototype for English and Russian screen translation into Chinese",
+  "scripts": { "prototype": "node prototype-server.cjs", "start": "node prototype-server.cjs", "test": "node --test --test-isolation=none tests/*.test.cjs" },
+  "engines": { "node": ">=24" }
+}

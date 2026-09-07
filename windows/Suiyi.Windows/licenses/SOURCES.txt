@@ -1,0 +1,55 @@
+Suiyi Windows 0.3.0: third-party license sources
+Verified 2026-09-07. This file is a source index maintained by this project,
+not an upstream NOTICE file. Upstream license files are preserved separately.
+
+Tesseract .NET wrapper 5.2.0
+NuGet package: Tesseract 5.2.0, author Charles Weld, Apache-2.0.
+NuGet copyright: Copyright 2012-2020 Charles Weld.
+Source: https://github.com/charlesw/tesseract/tree/5.2.0
+License: https://raw.githubusercontent.com/charlesw/tesseract/5.2.0/LICENSE.txt
+Additional attribution: original ReadMe.md at the same fixed tag, preserved
+as Tesseract-DotNet-5.2.0-README-attributions.txt.
+InteropDotNet in that fixed source is Copyright (c) 2014 Andrey Akinshin,
+MIT licensed; see InteropDotNet-MIT.txt.
+The complete fixed-tag wrapper archive contained no separate NOTICE file.
+
+Tesseract OCR engine 5.2
+Included binary: x64/tesseract50.dll from Tesseract NuGet 5.2.0.
+The wrapper's fixed-tag ChangeLog.md states an upgrade to Tesseract 5.2.
+Apache-2.0 license source:
+https://raw.githubusercontent.com/tesseract-ocr/tesseract/5.2.0/LICENSE
+
+Leptonica 1.82.0
+Included binary: x64/leptonica-1.82.0.dll from Tesseract NuGet 5.2.0.
+BSD-2-Clause license source:
+https://raw.githubusercontent.com/DanBloomberg/leptonica/1.82.0/leptonica-license.txt
+
+tessdata_fast 4.1.0
+Included language files: eng.traineddata and rus.traineddata.
+Apache-2.0 license source:
+https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/4.1.0/LICENSE
+This license matches the LICENSE already accompanying tessdata in this project.
+
+NOTICE verification
+At the fixed tags listed above, both root NOTICE and NOTICE.txt URLs returned
+HTTP 404 for charlesw/tesseract, tesseract-ocr/tesseract, DanBloomberg/leptonica
+and tesseract-ocr/tessdata_fast. No substitute upstream NOTICE was invented.
+
+Microsoft .NET 10.0.11 runtime (win-x64)
+Copied from the exact locally restored self-contained runtime packages:
+.local/nuget/microsoft.netcore.app.runtime.win-x64/10.0.11/LICENSE.TXT
+.local/nuget/microsoft.netcore.app.runtime.win-x64/10.0.11/THIRD-PARTY-NOTICES.TXT
+.local/nuget/microsoft.windowsdesktop.app.runtime.win-x64/10.0.11/LICENSE
+Both package nuspec files declare MIT and source repository
+https://github.com/dotnet/dotnet
+commit e2f47b0110ed922f21a1522da67279133ce28f32.
+The files are preserved as DotNet-Runtime-10.0.11-LICENSE.txt,
+DotNet-Runtime-10.0.11-THIRD-PARTY-NOTICES.txt and
+DotNet-WindowsDesktop-10.0.11-LICENSE.txt.
+The .NET SDK root license was inspected but not substituted for runtime licenses.
+
+Distribution notes
+Keep this licenses directory and tessdata/LICENSE with the Windows package.
+This inventory records the listed packages and the notices they supply; it
+does not claim to be a legal opinion or a complete binary provenance audit.
+The Visual C++ Redistributable installer is not included or installed by this work.

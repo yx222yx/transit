@@ -1,0 +1,111 @@
+<!doctype html>
+<!-- Throwaway UI prototype: compare floating, split, and immersive screen translation via ?variant=A|B|C. -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#255847">
+  <title>随译 · 屏幕翻译交互原型</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23255847'/%3E%3Ctext x='13' y='45' font-size='40' fill='white'%3E译%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="prototype.css">
+  <script src="prototype-samples.js" defer></script>
+  <script src="prototype-api.js" defer></script>
+  <script src="prototype.js" defer></script>
+  <script src="prototype-selection-data.js" defer></script>
+  <script src="prototype-selection.js" defer></script>
+</head>
+<body data-variant="A">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M7 9h10M7 13h10M7 17h6"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 5h16M12 5v15M8 20h8M4 5v3m16-3v3"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-4v5l3 2"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.6 2.6 0 0 1 5.2 0c0 2-2.6 2-2.6 4m0 3h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="m9 3 8 0-1 7 3 3v2H6v-2l3-3V3m3 12v7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 7M3 3v7h7"/></symbol>
+    <symbol id="i-language" viewBox="0 0 24 24"><path d="M3 5h12M9 3v2M5 5c0 6 4 9 8 11M13 5c0 6-4 9-8 11m9 5 4-11 4 11m-7-3h6"/></symbol>
+  </svg>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <a class="brand" href="prototype.html" aria-label="随译首页">
+        <span class="brand-mark"><svg class="icon"><use href="#i-language"/></svg></span>
+        <span><span class="brand-name">随译<span class="brand-period">.</span></span><span class="brand-sub">让阅读自由发生</span></span>
+      </a>
+      <div class="nav-label">你的阅读助手</div>
+      <nav>
+        <button class="nav-item active" id="nav-workspace"><svg class="icon"><use href="#i-scan"/></svg><span>翻译工作台</span><span class="nav-active-dot"></span></button>
+        <button class="nav-item" id="nav-manual"><svg class="icon"><use href="#i-text"/></svg><span>文本翻译</span></button>
+        <button class="nav-item" id="nav-history"><svg class="icon"><use href="#i-history"/></svg><span>本次记录</span><span class="history-count" id="history-count">0</span></button>
+        <button class="nav-item" id="nav-api"><svg class="icon"><use href="#i-language"/></svg><span id="nav-api-label">API 配置</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="privacy-note"><svg class="icon"><use href="#i-shield"/></svg><strong>只留在此刻</strong><p>阅读记录仅保留在本页，<br>刷新后自动清空。</p></div>
+        <button class="nav-item" id="nav-help"><svg class="icon"><use href="#i-help"/></svg><span>体验说明</span></button>
+        <div class="version">随译 PROTOTYPE <span>v0.2</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="breadcrumb">工作空间 <span>/</span> <strong>翻译工作台</strong></div>
+        <div class="topbar-meta"><span class="prototype-badge">交互原型</span><span><i class="status-dot"></i><span id="engine-status">示例词库 · 离线</span></span></div>
+      </header>
+      <section class="page-heading">
+        <div><div class="eyebrow">LESS SWITCHING. MORE READING.</div><h1>跨过语言，继续阅读<span>。</span></h1><p class="page-subtitle">左键划选原文，松开即译。中文就在选中文字的旁边。</p></div>
+        <button class="primary-action" id="capture-button"><svg class="icon"><use href="#i-scan"/></svg><span>框选翻译</span><kbd>Alt Q</kbd></button>
+      </section>
+      <section class="workspace-card" aria-label="示例阅读与翻译区域">
+        <div class="workspace-toolbar">
+          <div class="language-switch" role="group" aria-label="示例原文语言"><button data-language="en" class="active" aria-pressed="true"><span>EN</span> 英语示例</button><button data-language="ru" aria-pressed="false"><span>RU</span> 俄语示例</button></div>
+          <div class="toolbar-right"><span class="selection-ready"><svg class="icon"><use href="#i-text"/></svg>划译已开启</span><span class="mode-label" id="mode-label">悬浮译窗</span><span class="toolbar-separator"></span><button class="icon-button" id="reset-button" title="重置当前示例" aria-label="重置当前示例"><svg class="icon"><use href="#i-reset"/></svg></button></div>
+        </div>
+        <div class="immersive-controls"><span>沉浸阅读 <span>／ 中文紧随原文</span></span><div><button class="secondary-button" id="immersive-copy"><svg class="icon"><use href="#i-copy"/></svg>复制译文</button><button class="text-button" id="immersive-toggle">收起中文</button></div></div>
+        <div class="reading-workspace" id="reading-workspace">
+          <div class="document-window">
+            <div class="browser-chrome"><span class="window-dots"><i></i><i></i><i></i></span><span class="address" id="sample-address"></span><span class="browser-sample">示例文章</span></div>
+            <article class="reader" id="reader" aria-label="可划选或框选的示例文章"></article>
+          </div>
+          <aside class="translation-panel" id="translation-panel" aria-label="中文翻译结果">
+            <div class="translation-head"><span class="translation-symbol"><svg class="icon"><use href="#i-language"/></svg></span><div class="translation-heading"><h2>随译</h2><p id="translation-subtitle">读懂，然后继续。</p></div><button class="icon-button" id="pin-button" title="固定译窗（仅本页）" aria-label="固定译窗（仅本页）" aria-pressed="false"><svg class="icon"><use href="#i-pin"/></svg></button><button class="icon-button" id="close-result" aria-label="收起译文" title="收起译文"><svg class="icon"><use href="#i-close"/></svg></button></div>
+            <div class="translation-body" id="translation-body" aria-live="polite" aria-atomic="true"></div>
+            <div class="translation-footer"><button class="secondary-button" id="copy-button"><svg class="icon"><use href="#i-copy"/></svg>复制译文</button><button class="text-button" id="recapture-button">重新框选 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+            <div class="translation-note">预置示例译文 · 用于体验交互</div>
+          </aside>
+          <div class="selection-box" id="selection-box" hidden aria-hidden="true"></div>
+          <button class="reopen-result" id="reopen-result" hidden><svg class="icon"><use href="#i-language"/></svg>展开译文</button>
+        </div>
+        <div class="workspace-status"><span class="status-text" id="status-text" role="status"></span><span class="shortcut-hint">本页框选 · <kbd>Esc</kbd> 取消</span></div>
+      </section>
+      <section class="quick-guide" aria-label="体验步骤">
+        <div class="guide-item"><span class="guide-number">01</span><div class="guide-copy"><h3>选中你想读的</h3><p>左键划选一个词、一句或多段原文</p></div></div>
+        <div class="guide-item"><span class="guide-number">02</span><div class="guide-copy"><h3>松开，即刻在旁</h3><p>译窗自动跟随选区，显示对应中文</p></div></div>
+        <div class="guide-item"><span class="guide-number">03</span><div class="guide-copy"><h3>保持阅读的节奏</h3><p>收起译窗，继续阅读下一段</p></div></div>
+      </section>
+      <div class="prototype-state" id="prototype-state"></div>
+    </main>
+  </div>
+  <nav class="prototype-switcher" aria-label="原型布局切换">
+    <span class="switcher-label">探索阅读方式</span>
+    <button class="switch-arrow" id="previous-variant" aria-label="上一种布局">←</button>
+    <button class="variant-button active" data-variant="A" aria-pressed="true"><strong>A</strong><span>悬浮译窗</span></button>
+    <button class="variant-button" data-variant="B" aria-pressed="false"><strong>B</strong><span>左右对照</span></button>
+    <button class="variant-button" data-variant="C" aria-pressed="false"><strong>C</strong><span>沉浸阅读</span></button>
+    <button class="switch-arrow" id="next-variant" aria-label="下一种布局">→</button>
+  </nav>
+  <aside class="selection-popover" id="selection-popover" aria-label="划译结果" hidden>
+    <header class="selection-popover-head"><span class="selection-popover-mark"><svg class="icon"><use href="#i-language"/></svg></span><div><strong>划译</strong><span id="selection-language"></span></div><button class="icon-button" id="selection-close" aria-label="关闭划译" title="关闭划译 · Esc"><svg class="icon"><use href="#i-close"/></svg></button></header>
+    <div class="selection-popover-content"><div class="selection-source-label">选中的原文</div><p id="selection-source" class="selection-source"></p><div id="selection-result" aria-live="polite" aria-atomic="true"></div></div>
+    <footer class="selection-popover-footer"><span id="selection-feedback">本页示例 · 预置译文</span><button class="secondary-button" id="selection-copy"><svg class="icon"><use href="#i-copy"/></svg>复制中文</button></footer>
+  </aside>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="关闭对话框"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <div class="modal-body" id="modal-body"></div>
+    </section>
+  </div>
+</body>
+</html>

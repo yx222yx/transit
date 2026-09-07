@@ -1,0 +1,14 @@
+node_modules/
+.local/
+.env
+.env.*
+!*.example.*
+*.log
+**/bin/
+**/obj/
+dist/
+app/
+/随译.exe
+.vs/
+*.user
+*.suo
