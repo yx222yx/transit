@@ -1,12 +1,14 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Forms = System.Windows.Forms;
 
 namespace Suiyi.Windows;
 
-internal sealed record ScreenRegion(Bitmap Image, Rectangle Bounds);
+internal sealed record ScreenRegion(Bitmap Image, Rectangle Bounds, IntPtr TargetWindow = default, bool WholeWindow = false);
 
 internal sealed class RegionSelector : Forms.Form
 {
@@ -15,11 +17,16 @@ internal sealed class RegionSelector : Forms.Form
     private readonly TaskCompletionSource<ScreenRegion?> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Point? start;
     private Rectangle selected;
+    private readonly IReadOnlyList<ReadingWindowInfo>? windows;
+    private readonly bool wholeWindow;
+    private ReadingWindowInfo? target;
 
-    private RegionSelector(Bitmap image, Rectangle bounds)
+    private RegionSelector(Bitmap image, Rectangle bounds, bool reading, bool whole)
     {
         frozen = image;
         desktop = bounds;
+        windows = reading ? ReadingWindow.Snapshot() : null;
+        wholeWindow = whole;
         AutoScaleMode = Forms.AutoScaleMode.None;
         FormBorderStyle = Forms.FormBorderStyle.None;
         StartPosition = Forms.FormStartPosition.Manual;
@@ -33,7 +40,7 @@ internal sealed class RegionSelector : Forms.Form
         FormClosed += (_, _) => { completion.TrySetResult(null); frozen.Dispose(); };
     }
 
-    public static Task<ScreenRegion?> SelectAsync()
+    public static Task<ScreenRegion?> SelectAsync(bool reading = false, bool wholeWindow = false)
     {
         var bounds = Forms.SystemInformation.VirtualScreen;
         Bitmap? image = null;
@@ -42,7 +49,7 @@ internal sealed class RegionSelector : Forms.Form
             image = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
             using (var graphics = Graphics.FromImage(image))
                 graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size, CopyPixelOperation.SourceCopy);
-            var form = new RegionSelector(image, bounds);
+            var form = new RegionSelector(image, bounds, reading, wholeWindow);
             form.Show();
             form.Activate();
             return form.completion.Task;
@@ -70,20 +77,27 @@ internal sealed class RegionSelector : Forms.Form
         var cursor = PointToClient(Forms.Cursor.Position);
         int x = Math.Clamp(cursor.X + 18, 12, Math.Max(12, Width - 400));
         int y = Math.Clamp(cursor.Y + 26, 12, Math.Max(12, Height - 60));
-        e.Graphics.DrawString("拖动框选英／俄文字 · Esc 取消", font, Brushes.White, x, y);
+        e.Graphics.DrawString(wholeWindow ? "点击目标窗口 · Esc 取消" : "拖动框选英／俄文字 · Esc 取消", font, Brushes.White, x, y);
     }
 
     protected override void OnMouseDown(Forms.MouseEventArgs e)
     {
         if (e.Button == Forms.MouseButtons.Right) { Close(); return; }
         if (e.Button != Forms.MouseButtons.Left) return;
+        target = windows?.FirstOrDefault(window => window.Bounds.Contains(new Point(desktop.X + e.X, desktop.Y + e.Y)));
+        if (windows is not null && target is null) return;
         start = e.Location;
+        if (wholeWindow && target is not null)
+        {
+            selected = Rectangle.Intersect(target.Bounds, desktop);
+            selected.Offset(-desktop.X, -desktop.Y);
+        }
         Capture = true;
     }
 
     protected override void OnMouseMove(Forms.MouseEventArgs e)
     {
-        if (start is { } point)
+        if (!wholeWindow && start is { } point)
         {
             int x = Math.Clamp(e.X, 0, ClientSize.Width);
             int y = Math.Clamp(e.Y, 0, ClientSize.Height);
@@ -97,9 +111,12 @@ internal sealed class RegionSelector : Forms.Form
         if (e.Button != Forms.MouseButtons.Left || start is null) return;
         Capture = false;
         if (selected.Width < 12 || selected.Height < 12) { start = null; return; }
+        var screenBounds = new Rectangle(desktop.X + selected.X, desktop.Y + selected.Y, selected.Width, selected.Height);
+        if (target is not null && !target.Bounds.Contains(screenBounds)) { start = null; selected = Rectangle.Empty; Invalidate(); return; }
         var crop = frozen.Clone(selected, PixelFormat.Format32bppArgb);
-        completion.TrySetResult(new ScreenRegion(crop, new Rectangle(desktop.X + selected.X, desktop.Y + selected.Y, selected.Width, selected.Height)));
+        completion.TrySetResult(new ScreenRegion(crop, screenBounds, target?.Handle ?? IntPtr.Zero, wholeWindow));
         Close();
+        if (target is not null) ReadingWindow.ActivateTarget(target.Handle);
     }
 
     protected override void OnKeyDown(Forms.KeyEventArgs e)

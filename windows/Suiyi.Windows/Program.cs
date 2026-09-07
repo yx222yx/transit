@@ -10,8 +10,11 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--selection-probe") return SelectionProbe.Run(args);
+        if (args.Length > 0 && args[0] == "--reading-guard") return ReadingGuard.Run(args);
         if (args.Length > 0 && args[0] == "--self-test") return SelfTest.Run(args);
-        using var singleInstance = new Mutex(true, @"Local\Suiyi.Windows.0.3", out bool created);
+        if (args.Length > 0 && args[0] == "--reading-self-test") return ReadingSessionSelfTest.RunAsync().GetAwaiter().GetResult();
+        IsDevelopment = Array.IndexOf(args, "--dev") >= 0;
+        using var singleInstance = new Mutex(true, IsDevelopment ? @"Local\Suiyi.Windows.Development" : @"Local\Suiyi.Windows.0.3", out bool created);
         if (!created)
         {
             MessageBox.Show("随译已经在运行，请从任务栏右侧的托盘图标打开。", "随译");
@@ -27,4 +30,5 @@ internal static class Program
         controller.Start();
         return app.Run();
     }
+    internal static bool IsDevelopment { get; private set; }
 }

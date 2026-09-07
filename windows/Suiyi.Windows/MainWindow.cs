@@ -13,6 +13,7 @@ internal sealed class MainWindow : Window
     internal readonly TextBlock Status = Label("配置 DeepSeek 后，即可翻译英／俄文本。", 13);
     internal readonly TextBlock Engine = Label("尚未配置 API", 13);
     internal readonly CheckBox Automatic = new() { Content = "自动划译：拖动选中文字后翻译", Margin = new Thickness(0, 14, 0, 8) };
+    internal readonly TextBlock ContinuousStatus = Label("持续覆盖翻译未开启。", 13);
     private readonly TabControl tabs = new();
     private readonly TextBlock shortcuts = Label("", 12);
     private readonly TextBlock helpSteps = Label("", 14, false, 16);
@@ -35,11 +36,16 @@ internal sealed class MainWindow : Window
     internal event Action? ClearRequested;
     internal event Action<bool>? AutomaticChanged;
     internal event Action? ExitRequested;
+    internal event Action<bool>? ContinuousRequested;
+    internal event Action? ContinuousPauseRequested;
+    internal event Action? ContinuousOriginalRequested;
+    internal event Action? ContinuousReadRequested;
+    internal event Action? ContinuousEndRequested;
     private ApiSettings applied = new();
 
     public MainWindow()
     {
-        Title = AppIdentity.Title;
+        Title = AppIdentity.Title + (Program.IsDevelopment ? " · 开发试用" : "");
         Icon = AppIdentity.WindowIcon;
         Width = 820;
         Height = Math.Min(800, SystemParameters.WorkArea.Height - 50);
@@ -71,6 +77,7 @@ internal sealed class MainWindow : Window
         tabs.Items.Add(Tab("翻译", ReadingPanel()));
         tabs.Items.Add(Tab("API 配置", ApiPanel()));
         tabs.Items.Add(Tab("使用方法", HelpPanel()));
+        tabs.Items.Add(Tab("持续覆盖", ContinuousPanel()));
         root.Children.Add(tabs);
         Content = root;
         Closing += OnClosing;
@@ -134,6 +141,29 @@ internal sealed class MainWindow : Window
         return new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     }
 
+    private UIElement ContinuousPanel()
+    {
+        var panel = new StackPanel { Margin = new Thickness(22) };
+        panel.Children.Add(Label("在原位置持续阅读中文", 22, true));
+        panel.Children.Add(Label("手动选择一个窗口内的范围，停稳后把英／俄文字覆盖成中文。滚动后自动更新；原网页、软件和文件保持原样。", 14, false, 8));
+        var start = new WrapPanel { Margin = new Thickness(0, 14, 0, 18) };
+        Add(start, "框选并开始", () => ContinuousRequested?.Invoke(false), true);
+        Add(start, "选择整个窗口", () => ContinuousRequested?.Invoke(true));
+        panel.Children.Add(start);
+        panel.Children.Add(ContinuousStatus);
+        var controls = new WrapPanel { Margin = new Thickness(0, 18, 0, 14) };
+        Add(controls, "暂停／继续", () => ContinuousPauseRequested?.Invoke());
+        Add(controls, "原文／中文", () => ContinuousOriginalRequested?.Invoke());
+        Add(controls, "完整译文", () => ContinuousReadRequested?.Invoke());
+        Add(controls, "结束", () => ContinuousEndRequested?.Invoke());
+        panel.Children.Add(controls);
+        panel.Children.Add(Label("覆盖层不接收点击；可直接点击、滚动原应用。按住 Ctrl+Alt+O 临时看原文，松开恢复。点击小控制条的「完整译文」可选择、复制或修正识别文字。", 13, false, 12));
+        panel.Children.Add(Label("切换到其他窗口、输入控件编辑或出现遮挡时暂时露出原文，回到目标窗口后恢复。此开发试用先验证局部阅读流程；长译文在完整阅读面板展开。", 13, false, 12));
+        panel.Children.Add(Label("截图只在本地识别；模型只接收文字。需先在 API 配置保存 Key。每次重新启动都关闭，不自动恢复采集。", 13, false, 12));
+        return new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        static void Add(Panel panel, string text, Action action, bool primary = false) { var button = Button(text, primary); button.Click += (_, _) => action(); panel.Children.Add(button); }
+    }
+
     private UIElement HelpPanel()
     {
         var panel = new StackPanel { Margin = new Thickness(22) };
@@ -176,6 +206,7 @@ internal sealed class MainWindow : Window
     internal void SetBusy(bool busy) { translate.IsEnabled = !busy; translate.Content = busy ? "正在翻译…" : "翻译为中文"; }
     internal void ShowSettings() { ShowNormal(); tabs.SelectedIndex = 1; }
     internal void ShowReading() { ShowNormal(); tabs.SelectedIndex = 0; }
+    internal void ShowContinuous() { ShowNormal(); tabs.SelectedIndex = 3; }
     internal void ShowNormal() { Show(); WindowState = WindowState.Normal; Activate(); }
     private void OnClosing(object? sender, CancelEventArgs e) { if (!Exiting) { apiKey.Clear(); e.Cancel = true; Hide(); } }
 

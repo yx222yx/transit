@@ -98,6 +98,9 @@ public sealed class GlobalInput : IDisposable
     public const int TranslateSelectionHotkey = 1;
     public const int CaptureOcrHotkey = 2;
     public const int ToggleAutomaticHotkey = 3;
+    public const int StartContinuousHotkey = 4;
+    public const int PauseContinuousHotkey = 5;
+    public const int EndContinuousHotkey = 6;
     private const int WmHotkey = 0x0312;
     private const int WmLeftDown = 0x0201;
     private const int WmLeftUp = 0x0202;
@@ -162,6 +165,9 @@ public sealed class GlobalInput : IDisposable
         Register(TranslateSelectionHotkey, 0x54, "Ctrl+Alt+T");
         Register(CaptureOcrHotkey, 0x51, "Ctrl+Alt+Q");
         Register(ToggleAutomaticHotkey, 0x50, "Ctrl+Alt+P");
+        Register(StartContinuousHotkey, 0x53, "Ctrl+Alt+S");
+        Register(PauseContinuousHotkey, 0x52, "Ctrl+Alt+R");
+        Register(EndContinuousHotkey, 0x45, "Ctrl+Alt+E");
     }
 
     private void Register(int id, uint key, string label)
@@ -171,6 +177,9 @@ public sealed class GlobalInput : IDisposable
             TranslateSelectionHotkey => 0x77, // F8
             CaptureOcrHotkey => 0x78, // F9
             ToggleAutomaticHotkey => 0x79, // F10
+            StartContinuousHotkey => 0x7A, // F11
+            PauseContinuousHotkey => 0x7B, // F12
+            EndContinuousHotkey => 0x76, // F7
             _ => throw new ArgumentOutOfRangeException(nameof(id))
         };
         string shiftLabel = label.Replace("Ctrl+Alt+", "Ctrl+Alt+Shift+", StringComparison.Ordinal);

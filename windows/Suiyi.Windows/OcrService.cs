@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -13,6 +15,12 @@ public sealed class OcrService : IDisposable
     private int _disposed;
 
     public async Task<string> RecognizeAsync(Bitmap bitmap, CancellationToken token)
+    {
+        var blocks = await RecognizeBlocksAsync(bitmap, token).ConfigureAwait(false);
+        return string.Join("\n", blocks.Select(block => block.Text));
+    }
+
+    internal async Task<IReadOnlyList<OcrBlock>> RecognizeBlocksAsync(Bitmap bitmap, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         token.ThrowIfCancellationRequested();
@@ -50,13 +58,23 @@ public sealed class OcrService : IDisposable
                 using var pix = Pix.LoadFromMemory(bytes);
                 token.ThrowIfCancellationRequested();
                 using var page = engine.Process(pix, PageSegMode.Auto);
-                string text = page.GetText();
+                var blocks = new List<OcrBlock>();
+                using (var iterator = page.GetIterator())
+                {
+                    iterator.Begin();
+                    do
+                    {
+                        string text = iterator.GetText(PageIteratorLevel.Para)?.Trim() ?? "";
+                        if (text.Length > 0 && iterator.TryGetBoundingBox(PageIteratorLevel.Para, out var bounds))
+                            blocks.Add(new OcrBlock(text, new Rectangle(bounds.X1, bounds.Y1, bounds.Width, bounds.Height)));
+                    } while (iterator.Next(PageIteratorLevel.Para));
+                }
                 // Native recognition is synchronous; cancellation discards its eventual result.
                 token.ThrowIfCancellationRequested();
                 ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-                if (string.IsNullOrWhiteSpace(text))
+                if (blocks.Count == 0)
                     throw new InvalidOperationException("没有识别到英文或俄文。请框选更清晰的文字区域，或先放大原文。");
-                return text.Trim();
+                return (IReadOnlyList<OcrBlock>)blocks;
             }
             catch (Exception error) when (error is DllNotFoundException or BadImageFormatException or TypeInitializationException or FileLoadException)
             {

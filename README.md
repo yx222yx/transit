@@ -2,7 +2,7 @@
 
 一个持续迭代的英俄屏幕翻译工具，将英语、俄语翻译为简体中文。
 
-当前版本为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。下一轮已确认 [持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md)，以 Lenta 购物网站进行人工试用；这些新功能尚未实现。用户明确确认定版前不生成新便携发布包。
+当前发布基线为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。[持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md) 已确认，正在开发 [阶段 A：单选区持续覆盖翻译](https://github.com/yx222yx/transit/issues/2)，以 Lenta 购物网站进行人工试用。阶段 A 尚待人工验收；分析侧栏、配置保存和图片直传在后续阶段实现。用户明确确认定版前不生成新便携发布包。
 
 项目仓库：[yx222yx/transit](https://github.com/yx222yx/transit)。
 
@@ -42,14 +42,14 @@ Git 管理源码、资源和文档；启动 EXE、运行目录、SDK、缓存与
 需要 .NET 10 SDK。构建脚本优先使用本机项目内的 `.local/dotnet/dotnet.exe`，否则使用 PATH 中的 dotnet。根启动器使用 Windows 自带的 .NET Framework 编译器。
 
 ```powershell
-# 生成根目录 随译.exe 与 app/
-powershell -File .\windows\build.ps1 -Publish
+# 当前开发试用：构建后打开开发版
+powershell -File .\scripts\start-windows-dev.ps1
 
-# 同时生成可分发压缩包
-powershell -File .\windows\build.ps1 -Publish -Package
+# 已完成构建时直接打开
+powershell -File .\scripts\start-windows-dev.ps1 -SkipBuild
 ```
 
-当前压缩包输出为 `dist/Transit-Windows-x64-v0.1.0-alpha.1.zip`。源码仓库不包含生成的 EXE；从 GitHub 获取源码后先运行上述构建命令。
+开发版从 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/` 启动，标题标明开发试用，使用独立实例；根目录的 `随译.exe` 和 `app/` 仍为已有发布版。源码仓库不包含生成的 EXE；从 GitHub 获取源码后运行上述开发试用命令。现有发布及打包命令见 [开发说明](docs/development.md)，明确确认定版后才执行。
 
 网页原型需要 Node.js 24 或更新版本：
 

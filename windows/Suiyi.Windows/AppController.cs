@@ -20,6 +20,7 @@ internal sealed class AppController : IDisposable
     private readonly Forms.NotifyIcon tray;
     private readonly Icon trayIcon;
     private readonly Forms.ToolStripMenuItem automaticMenu;
+    private ContinuousReadingController? continuous;
     private ApiSettings settings = new();
     private CancellationTokenSource? pending;
     private CancellationTokenSource? testing;
@@ -46,6 +47,11 @@ internal sealed class AppController : IDisposable
         main.ClearRequested += () => Apply(new ApiSettings());
         main.AutomaticChanged += SetAutomatic;
         main.ExitRequested += Exit;
+        main.ContinuousRequested += whole => _ = StartContinuousAsync(whole);
+        main.ContinuousPauseRequested += () => continuous?.TogglePause();
+        main.ContinuousOriginalRequested += () => continuous?.ToggleOriginal();
+        main.ContinuousReadRequested += () => continuous?.ShowReading();
+        main.ContinuousEndRequested += StopContinuous;
         popup.Dismissed += Cancel;
         popup.CopyRequested += Copy;
         popup.EditRequested += () => { popup.Hide(); main.ShowReading(); };
@@ -54,6 +60,9 @@ internal sealed class AppController : IDisposable
             if (id == GlobalInput.TranslateSelectionHotkey) _ = CaptureSelectionAsync(Native.GetCursorPoint(), false);
             else if (id == GlobalInput.CaptureOcrHotkey) _ = CaptureOcrAsync();
             else if (id == GlobalInput.ToggleAutomaticHotkey) SetAutomatic(!input.AutoSelectionEnabled);
+            else if (id == GlobalInput.StartContinuousHotkey) _ = StartContinuousAsync(false);
+            else if (id == GlobalInput.PauseContinuousHotkey) continuous?.TogglePause();
+            else if (id == GlobalInput.EndContinuousHotkey) StopContinuous();
         };
         input.SelectionReleased += point => { if (!capturing) _ = CaptureSelectionAsync(point, true); };
         var menu = new Forms.ContextMenuStrip();
@@ -63,6 +72,12 @@ internal sealed class AppController : IDisposable
         automaticMenu = new Forms.ToolStripMenuItem("开启自动划译  " + PauseKey);
         automaticMenu.Click += (_, _) => SetAutomatic(!input.AutoSelectionEnabled);
         menu.Items.Add(automaticMenu);
+        menu.Items.Add("持续覆盖设置", null, (_, _) => main.ShowContinuous());
+        menu.Items.Add("框选并持续翻译  " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey), null, (_, _) => _ = StartContinuousAsync(false));
+        menu.Items.Add("选择整窗口持续翻译", null, (_, _) => _ = StartContinuousAsync(true));
+        menu.Items.Add("暂停／继续持续翻译  " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey), null, (_, _) => continuous?.TogglePause());
+        menu.Items.Add("持续翻译 · 原文／中文", null, (_, _) => continuous?.ToggleOriginal());
+        menu.Items.Add("结束持续翻译  " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey), null, (_, _) => StopContinuous());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出随译", null, (_, _) => Exit());
         trayIcon = AppIdentity.CreateTrayIcon();
@@ -75,6 +90,7 @@ internal sealed class AppController : IDisposable
         main.Show();
         main.ShowSettings();
         main.ConfigureHotkeys(SelectionKey, OcrKey, PauseKey, string.Join(" ", input.RegistrationNotes));
+        main.ContinuousStatus.Text = "持续覆盖未开启。框选开始 " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey) + "；暂停／继续 " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey) + "；结束 " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey) + "。";
         if (input.RegistrationErrors.Count > 0)
             main.Status.Text = string.Join("\n", input.RegistrationErrors);
     }
@@ -102,6 +118,7 @@ internal sealed class AppController : IDisposable
 
     private void Apply(ApiSettings config)
     {
+        StopContinuous();
         Cancel();
         testing?.Cancel();
         settings = config;
@@ -110,6 +127,42 @@ internal sealed class AppController : IDisposable
         popup.Hide();
         if (config.ApiKey.Length == 0) SetAutomatic(false);
         main.Status.Text = config.ApiKey.Length == 0 ? "请配置 DeepSeek API。" : $"已准备好。选中文字后按 {SelectionKey}。";
+    }
+
+    private async Task StartContinuousAsync(bool wholeWindow)
+    {
+        if (capturing || disposed || !RequireKey()) return;
+        StopContinuous();
+        SetAutomatic(false);
+        capturing = true;
+        var job = Begin();
+        popup.Hide();
+        main.Hide();
+        try
+        {
+            await Task.Delay(250, job.Token);
+            var selection = await RegionSelector.SelectAsync(reading: true, wholeWindow);
+            if (selection is null) { main.ShowContinuous(); return; }
+            using (selection.Image)
+            {
+                if (disposed || job.Id != generation) return;
+                var target = ReadingTarget.From(selection);
+                continuous = new ContinuousReadingController(target, translator, ocr, settings);
+                continuous.ReselectRequested += () => _ = StartContinuousAsync(false);
+                continuous.CorrectRequested += text => { SetSource(text); main.ShowReading(); main.Status.Text = "持续覆盖已暂停。修正原文后点击翻译，可在此对照阅读。"; };
+                continuous.StatusChanged += status => main.ContinuousStatus.Text = status;
+                continuous.Ended += () => { continuous = null; main.ContinuousStatus.Text = "持续翻译已结束。"; };
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { main.ShowContinuous(); main.ContinuousStatus.Text = error.Message; }
+        finally { capturing = false; }
+    }
+
+    private void StopContinuous()
+    {
+        continuous?.Dispose();
+        continuous = null;
     }
 
     private async Task TestAsync(ApiSettings config)
@@ -278,6 +331,7 @@ internal sealed class AppController : IDisposable
     {
         if (disposed) return;
         disposed = true;
+        StopContinuous();
         Cancel();
         testing?.Cancel();
         settings = new ApiSettings();
