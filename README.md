@@ -51,6 +51,8 @@ powershell -File .\scripts\start-windows-dev.ps1 -SkipBuild
 
 开发版从 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/` 启动，标题标明开发试用，使用独立实例；完成构建后也可双击 `scripts/start-windows-dev.cmd` 打开。根目录的 `随译.exe` 和 `app/` 仍为已有发布版。源码仓库不包含生成的 EXE；从 GitHub 获取源码后运行上述开发试用命令。现有发布及打包命令见 [开发说明](docs/development.md)，明确确认定版后才执行。
 
+本机开发构建的 `win-x64/Suiyi.exe` 现可直接查找项目内 `.local/dotnet/` 的 Desktop Runtime，无需全局安装 .NET。保持完整项目目录即可；推荐使用上述脚本入口，以便明确进入开发实例。
+
 网页原型需要 Node.js 24 或更新版本：
 
 ```powershell

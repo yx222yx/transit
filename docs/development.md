@@ -45,6 +45,10 @@ Windows 发布入口为根目录 `随译.exe`；压缩包为 `dist/Transit-Windo
 
 开发试用入口运行 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/` 中的构建输出，以 `--dev` 启用独立实例。完成构建后也可双击 `scripts/start-windows-dev.cmd` 打开。它可以与原发布版并存；窗口标题标明开发试用。两者的 Key 均只保留在各自内存中，快捷键以当前窗口实际显示为准。开发脚本不执行发布或打包；关闭主窗口后仍在托盘，使用托盘的退出入口结束开发版，再进行下一次构建。
 
+开发构建的 `Suiyi.exe` 也支持直接双击：先从相对于构建目录的 `.local/dotnet/` 查找运行库，再回退到系统安装。项目内已有 `Microsoft.WindowsDesktop.App 10.0.11`，无需为本机开发试用另行下载安装 .NET。保留完整项目目录；单独复制 EXE 不会带上运行库、DLL 和 OCR 数据。项目默认包含 `win-x64` 输出目录，完整路径是 `windows/Suiyi.Windows/bin/Release/net10.0-windows/win-x64/Suiyi.exe`。使用脚本入口会明确传入 `--dev`，适合继续开发试用。
+
+SDK 的普通 build 不应用仅供 publish 使用的运行库搜索属性，因此项目在开发 apphost 生成后补入相对运行库路径，路径按实际 `TargetDir` 计算。该处理不复制运行库、不执行 publish，也不改系统环境变量；自包含发布跳过这一步。
+
 ## Git 协作
 
 `main` 保留可追溯的项目基线。后续独立功能使用简短的 `feature/<功能>` 分支，修复可用 `fix/<问题>`；每个普通 commit 尽量对应一项可理解的修改。合并前记录相关构建或测试结果，未验证内容明确标注。

@@ -28,4 +28,21 @@
     <Content Include="licenses\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\README.md" Link="README.md" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- The SDK applies app-relative runtime search only when publishing. Also
+       configure the ordinary development apphost so double-clicking it works. -->
+  <Target Name="ConfigureDevelopmentRuntimeSearch" AfterTargets="_CreateAppHost"
+          Condition="'$(SelfContained)' != 'true' and '$(UseAppHost)' == 'true' and Exists('$(AppHostSourcePath)') and Exists('@(IntermediateAssembly)')">
+    <PropertyGroup>
+      <_TransitRuntimeRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../.local/dotnet'))</_TransitRuntimeRoot>
+      <_TransitRuntimeRelativePath>$([MSBuild]::MakeRelative('$(TargetDir)', '$(_TransitRuntimeRoot)'))</_TransitRuntimeRelativePath>
+    </PropertyGroup>
+    <CreateAppHost AppHostSourcePath="$(AppHostSourcePath)"
+                   AppHostDestinationPath="$(AppHostIntermediatePath)"
+                   AppBinaryName="$(AssemblyName)$(TargetExt)"
+                   IntermediateAssembly="@(IntermediateAssembly->'%(FullPath)')"
+                   WindowsGraphicalUserInterface="$(_UseWindowsGraphicalUserInterface)"
+                   DisableCetCompat="$(_DisableCetCompat)"
+                   DotNetSearchLocations="AppRelative;Global"
+                   AppRelativeDotNet="$(_TransitRuntimeRelativePath)" />
+  </Target>
 </Project>
