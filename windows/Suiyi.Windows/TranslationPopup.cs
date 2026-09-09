@@ -18,6 +18,8 @@ internal sealed class TranslationPopup : Window
     internal event Action<string>? CopyRequested;
     internal event Action? EditRequested;
     private System.Drawing.Point anchor;
+    private bool needsPlacement = true;
+    private bool manuallyMoved;
     private bool shutdown;
 
     public TranslationPopup()
@@ -42,7 +44,16 @@ internal sealed class TranslationPopup : Window
         close.Click += (_, _) => { Hide(); Dismissed?.Invoke(); };
         DockPanel.SetDock(close, Dock.Right);
         title.Children.Add(close);
-        title.Children.Add(MainWindow.Label("随译　英／俄 → 中文", 15, true));
+        var handle = MainWindow.Label("⋮⋮ 随译　英／俄 → 中文", 15, true);
+        handle.Cursor = System.Windows.Input.Cursors.SizeAll;
+        handle.ToolTip = "按住这里拖动译文框";
+        handle.MouseLeftButtonDown += (_, e) =>
+        {
+            manuallyMoved = true;
+            try { DragMove(); } catch (InvalidOperationException) { }
+            e.Handled = true;
+        };
+        title.Children.Add(handle);
         DockPanel.SetDock(title, Dock.Top);
         layout.Children.Add(title);
         var actions = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
@@ -66,20 +77,23 @@ internal sealed class TranslationPopup : Window
             SetWindowLongPtr(hwnd, -20, new IntPtr(GetWindowLongPtr(hwnd, -20).ToInt64() | 0x08000000L));
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
         };
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(() => Place());
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(() => { if (!manuallyMoved) Place(); });
         Closing += (_, e) => { if (!shutdown) { e.Cancel = true; Hide(); Dismissed?.Invoke(); } };
     }
 
     internal void Present(System.Drawing.Point location, string original, string translated, string state, bool canCopy)
     {
-        anchor = location;
+        bool place = needsPlacement || !IsVisible;
+        if (place) { anchor = location; manuallyMoved = false; }
         source.Text = original.Length > 450 ? original[..450] + "…" : original;
         result.Text = translated;
         status.Text = state;
         copy.IsEnabled = canCopy;
         if (!IsVisible) Show();
-        Place();
+        if (place) { needsPlacement = false; Place(); }
     }
+
+    internal void ResetPlacement() { needsPlacement = true; manuallyMoved = false; }
 
     private void Place()
     {

@@ -51,9 +51,9 @@ internal static class ReadingWindow
     internal static string? Unavailable(ReadingTarget target, out bool closed)
     {
         closed = !IsWindow(target.Handle) || Native.GetWindowProcessId(target.Handle) != target.ProcessId;
-        if (closed) return "目标窗口已关闭，持续翻译结束。";
+        if (closed) return "目标窗口已关闭，覆盖翻译结束。";
         if (IsIconic(target.Handle) || !IsWindowVisible(target.Handle)) return "目标窗口已最小化或隐藏，返回后恢复。";
-        if (Native.GetForegroundWindow() != target.Handle) return "已临时暂停 · 返回目标窗口后恢复";
+        if (Native.GetForegroundWindow() != target.Handle) return "覆盖已隐藏 · 返回目标窗口后显示已有译文";
         if (GetWindowDisplayAffinity(target.Handle, out uint affinity) && affinity != 0) return "目标窗口限制屏幕捕获，已暂停。";
         var bounds = target.CurrentBounds();
         if (!Bounds(target.Handle).Contains(bounds) || !System.Windows.Forms.SystemInformation.VirtualScreen.Contains(bounds))
@@ -95,34 +95,6 @@ internal static class ReadingWindow
             return image;
         }
         catch { image.Dispose(); throw; }
-    }
-
-    internal static ulong Signature(Bitmap image)
-        => Signature(image, new[] { new Rectangle(0, 0, image.Width, image.Height) });
-
-    internal static ulong Signature(Bitmap image, IEnumerable<Rectangle> regions)
-    {
-        var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        try
-        {
-            byte[] pixels = new byte[data.Stride * data.Height];
-            Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
-            ulong hash = 14695981039346656037UL;
-            foreach (var region in regions)
-            {
-                var bounds = Rectangle.Intersect(region, new Rectangle(0, 0, image.Width, image.Height));
-                for (int row = bounds.Top; row < bounds.Bottom; row++)
-                    for (int column = bounds.Left; column < bounds.Right; column++)
-                    {
-                        int index = row * data.Stride + column * 4;
-                        hash = (hash ^ (uint)(pixels[index] >> 3)) * 1099511628211UL;
-                        hash = (hash ^ (uint)(pixels[index + 1] >> 3)) * 1099511628211UL;
-                        hash = (hash ^ (uint)(pixels[index + 2] >> 3)) * 1099511628211UL;
-                    }
-            }
-            return hash;
-        }
-        finally { image.UnlockBits(data); }
     }
 
     internal static bool ExcludeFromCapture(IntPtr window) =>

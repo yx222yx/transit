@@ -84,8 +84,8 @@ internal sealed class ReadingSession : IDisposable
             }
             if (currentVersion == version)
                 Publish(visible, uncertain + failed > 0
-                    ? $"已显示 {visible.Count} 块中文；{uncertain} 块识别不清、{failed} 块翻译未完成，已保留原文。可重试或在完整译文中修正。" + blockFailure
-                    : visible.Count == 0 ? "没有可翻译的英俄文字；请放大文字或重新选择。" : "持续翻译中 · 滚动后自动更新");
+                    ? $"已显示 {visible.Count} 块中文；{uncertain} 块识别不清、{failed} 块翻译未完成，已保留原文。可刷新选区或在完整译文中修正。" + blockFailure
+                    : visible.Count == 0 ? "没有可翻译的英俄文字；请放大后刷新选区。" : "本次截图翻译完成 · 点击「刷新选区」更新");
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
@@ -122,7 +122,7 @@ internal sealed class ReadingSession : IDisposable
     {
         if (disposed) return;
         disposed = true;
-        Invalidate("持续翻译已结束");
+        Invalidate("覆盖翻译已结束");
         cache.Clear();
     }
 }

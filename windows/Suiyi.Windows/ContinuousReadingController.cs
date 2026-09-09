@@ -20,12 +20,11 @@ internal sealed class ContinuousReadingController : IDisposable
     private ReadingPanel? panel;
     private IReadOnlyList<OcrBlock> recognized = Array.Empty<OcrBlock>();
     private string lastTranslation = "";
-    private Rectangle lastBounds;
-    private ulong? signature;
-    private ulong? textSignature;
-    private DateTime stableSince;
-    private DateTime changedSince;
-    private bool contentDirty;
+    private Size? capturedWindowSize;
+    private CancellationTokenSource? captureCancellation;
+    private bool refreshRequested = true;
+    private bool checkingGuard;
+    private int captureCount;
     private bool paused;
     private bool original;
     private bool heldOriginal;
@@ -50,7 +49,7 @@ internal sealed class ContinuousReadingController : IDisposable
         bar.ReselectRequested += () => ReselectRequested?.Invoke();
         bar.EndRequested += Dispose;
         bar.ReadRequested += ShowReading;
-        bar.RetryRequested += Retry;
+        bar.RefreshRequested += Refresh;
         session.Changed += OnChanged;
         timer = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, (_, _) => Tick(), Dispatcher.CurrentDispatcher);
         try
@@ -74,8 +73,13 @@ internal sealed class ContinuousReadingController : IDisposable
     {
         if (disposed) return;
         paused = !paused;
-        Suspend(paused ? "已手动暂停 · 点击继续恢复" : "等待内容稳定…");
-        if (!paused) suspended = null;
+        if (paused)
+        {
+            refreshRequested = false;
+            CancelCapture();
+        }
+        suspended = null;
+        RefreshOverlay();
     }
 
     internal void ToggleOriginal()
@@ -85,11 +89,17 @@ internal sealed class ContinuousReadingController : IDisposable
         RefreshOverlay();
     }
 
-    internal void Retry()
+    internal void Refresh()
     {
         if (disposed) return;
-        Suspend("等待重新识别…");
+        CancelCapture();
+        captureVersion++;
+        paused = false;
+        original = false;
         suspended = null;
+        refreshRequested = true;
+        capturedWindowSize = null;
+        ClearContent("等待截取选区一次；请返回目标窗口。");
     }
 
     internal void ShowReading()
@@ -111,96 +121,105 @@ internal sealed class ContinuousReadingController : IDisposable
         if (closed) { Dispose(); return; }
         bool held = ReadingWindow.KeyDown(0x11) && ReadingWindow.KeyDown(0x12) && ReadingWindow.KeyDown(0x4F); // Ctrl + Alt + O
         if (heldOriginal != held) { heldOriginal = held; RefreshOverlay(); }
-        if (paused) return;
+        if (paused) { RefreshOverlay(); return; }
         if (unavailable is not null) { Suspend(unavailable); return; }
-        Rectangle bounds = target.CurrentBounds();
-        if (bounds != lastBounds)
+        if (capturedWindowSize is not null && ReadingWindow.Bounds(target.Handle).Size != capturedWindowSize)
         {
-            lastBounds = bounds;
-            Suspend("窗口位置变化，等待内容稳定…");
+            CancelCapture();
+            capturedWindowSize = null;
+            ClearContent("窗口尺寸已改变，点击「刷新选区」重新截取。");
         }
-        if (suspended is not null) { suspended = null; signature = null; textSignature = null; contentDirty = false; }
-        if (!busy) _ = CaptureAsync(bounds);
+        RefreshOverlay();
+        if (!checkingGuard) _ = CheckGuardAsync();
     }
 
-    private async Task CaptureAsync(Rectangle bounds)
+    // The timer checks window/input availability only. Screenshots require the initial
+    // selection or an explicit refresh; returning to a window never queues a screenshot.
+    private async Task CheckGuardAsync()
     {
-        busy = true;
+        checkingGuard = true;
         int currentVersion = captureVersion;
         try
         {
             ReadingGuardResult guard = await ReadingGuard.ReadAsync(target.Handle, lifetime.Token);
-            if (!Current(currentVersion, bounds)) return;
+            if (!Current(currentVersion)) return;
             if (!guard.Safe || guard.Editing)
             {
-                Suspend(guard.Editing ? "输入控件正在编辑，已露出原文；离开输入框后恢复。" : guard.Error ?? "无法确认输入保护状态，已暂停。请重试。");
+                Suspend(guard.Editing ? "输入控件正在编辑，已露出原文；离开输入框后显示已有译文。" : guard.Error ?? "无法确认输入保护状态，已隐藏覆盖。");
                 return;
             }
-            using var image = ReadingWindow.Capture(bounds, guard.PasswordBounds);
-            ulong value = ReadingWindow.Signature(image);
-            if (signature != value)
+            suspended = null;
+            if (refreshRequested && !busy)
             {
-                if (textSignature is not null && textSignature != ReadingWindow.Signature(image, recognized.Select(block => block.Bounds)))
-                {
-                    ClearContent("文字位置或内容变化，已露出原文…");
-                    textSignature = null;
-                }
-                if (!contentDirty) changedSince = DateTime.UtcNow;
-                contentDirty = true;
-                signature = value;
-                stableSince = DateTime.UtcNow;
+                refreshRequested = false;
+                _ = CaptureAsync(target.CurrentBounds(), guard);
             }
-            if (!contentDirty || (DateTime.UtcNow - stableSince < TimeSpan.FromMilliseconds(650) &&
-                DateTime.UtcNow - changedSince < TimeSpan.FromMilliseconds(1800))) return;
-            contentDirty = false;
-            if (recognized.Count == 0) session.Invalidate("正在本地识别英／俄文字…");
-            var blocks = await ocr.RecognizeBlocksAsync(image, lifetime.Token);
-            if (!Current(currentVersion, bounds)) return;
-            // OCR may finish after a scroll. Compare a fresh protected frame before using positions.
-            guard = await ReadingGuard.ReadAsync(target.Handle, lifetime.Token);
-            if (!Current(currentVersion, bounds)) return;
-            if (!guard.Safe || guard.Editing) { Suspend("输入状态变化，已露出原文。返回阅读后恢复。"); return; }
-            using var fresh = ReadingWindow.Capture(bounds, guard.PasswordBounds);
-            // Ignore image animation outside OCR text bounds. Only corresponding text must still match.
-            if (ReadingWindow.Signature(fresh, blocks.Select(block => block.Bounds)) !=
-                ReadingWindow.Signature(image, blocks.Select(block => block.Bounds)))
-            {
-                signature = null;
-                textSignature = null;
-                ClearContent("文字内容变化，等待停稳后翻译…");
-                return;
-            }
-            if (!recognized.SequenceEqual(blocks))
-            {
-                lastTranslation = "";
-                panel?.UpdateContent(string.Join("\n\n", blocks.Select(block => block.Text)), "");
-            }
-            recognized = blocks;
-            signature = ReadingWindow.Signature(fresh);
-            textSignature = ReadingWindow.Signature(fresh, blocks.Select(block => block.Bounds));
-            _ = session.ObserveAsync(blocks);
+            RefreshOverlay();
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
         {
-            if (!disposed && currentVersion == captureVersion) ClearContent(error.Message + " 可点重试或重新选择。");
+            if (!disposed && currentVersion == captureVersion) Suspend(error.Message);
         }
-        finally { busy = false; }
+        finally { checkingGuard = false; }
     }
 
-    private bool Current(int version, Rectangle bounds) => !disposed && !paused && version == captureVersion &&
-        target.CurrentBounds() == bounds && ReadingWindow.Unavailable(target, out _) is null;
+    private async Task CaptureAsync(Rectangle bounds, ReadingGuardResult guard)
+    {
+        busy = true;
+        int currentVersion = captureVersion;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        captureCancellation = cancellation;
+        try
+        {
+            using var image = ReadingWindow.Capture(bounds, guard.PasswordBounds);
+            captureCount++;
+            capturedWindowSize = ReadingWindow.Bounds(target.Handle).Size;
+            session.Invalidate("已截取一次，正在本地识别英／俄文字…");
+            var blocks = await ocr.RecognizeBlocksAsync(image, cancellation.Token);
+            if (!Current(currentVersion)) { if (currentVersion == captureVersion) CancelCapture(); return; }
+            guard = await ReadingGuard.ReadAsync(target.Handle, cancellation.Token);
+            if (!Current(currentVersion)) { if (currentVersion == captureVersion) CancelCapture(); return; }
+            if (!guard.Safe || guard.Editing)
+            {
+                Suspend("输入状态变化，已中断本次处理；点击「刷新选区」重试。");
+                return;
+            }
+            recognized = blocks;
+            panel?.UpdateContent(string.Join("\n\n", blocks.Select(block => block.Text)), "");
+            await session.ObserveAsync(blocks);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error)
+        {
+            if (!disposed && currentVersion == captureVersion) ClearContent(error.Message + " 可点击「刷新选区」或重新选择。");
+        }
+        finally
+        {
+            if (ReferenceEquals(captureCancellation, cancellation)) captureCancellation = null;
+            busy = false;
+            RefreshOverlay();
+        }
+    }
+
+    private bool Current(int version) => !disposed && !paused && version == captureVersion &&
+        ReadingWindow.Unavailable(target, out _) is null &&
+        (capturedWindowSize is null || ReadingWindow.Bounds(target.Handle).Size == capturedWindowSize);
 
     private void Suspend(string status)
     {
-        overlay.Hide();
-        if (suspended == status) return;
         suspended = status;
+        CancelCapture();
+        RefreshOverlay();
+    }
+
+    private void CancelCapture()
+    {
+        if (captureCancellation is null) return;
         captureVersion++;
-        signature = null;
-        textSignature = null;
-        contentDirty = false;
-        session.Invalidate(status);
+        captureCancellation.Cancel();
+        captureCancellation = null;
+        ClearContent("本次处理已中断，点击「刷新选区」重试。");
     }
 
     private void ClearContent(string status)
@@ -220,14 +239,18 @@ internal sealed class ContinuousReadingController : IDisposable
             panel?.UpdateContent(string.Join("\n\n", recognized.Select(block => block.Text)), lastTranslation);
         }
         RefreshOverlay();
-        StatusChanged?.Invoke(snapshot.Status + $" · 本次请求 {snapshot.RequestCount}");
     }
 
     private void RefreshOverlay()
     {
         if (disposed) return;
-        bar.Update(session.Current, paused, original || heldOriginal);
-        if (paused || original || heldOriginal || suspended is not null || ReadingWindow.Unavailable(target, out _) is not null) overlay.Hide();
+        string? unavailable = ReadingWindow.Unavailable(target, out _);
+        string status = paused ? "已手动暂停；继续只显示已有译文，刷新才截取新内容。"
+            : suspended ?? unavailable ?? (refreshRequested ? "等待截取选区一次；请返回目标窗口。" : session.Current.Status);
+        if (refreshRequested && (suspended is not null || unavailable is not null)) status += " 本次刷新等待返回可阅读的目标窗口。";
+        bar.Update(session.Current with { Status = status }, paused, original || heldOriginal, captureCount);
+        StatusChanged?.Invoke(status + $" · 截图 {captureCount} 次 · 翻译请求 {session.Current.RequestCount} 次");
+        if (paused || original || heldOriginal || suspended is not null || unavailable is not null) overlay.Hide();
         else overlay.Present(target.CurrentBounds(), session.Current.Blocks);
     }
 

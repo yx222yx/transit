@@ -13,7 +13,7 @@ internal sealed class MainWindow : Window
     internal readonly TextBlock Status = Label("配置 DeepSeek 后，即可翻译英／俄文本。", 13);
     internal readonly TextBlock Engine = Label("尚未配置 API", 13);
     internal readonly CheckBox Automatic = new() { Content = "自动划译：拖动选中文字后翻译", Margin = new Thickness(0, 14, 0, 8) };
-    internal readonly TextBlock ContinuousStatus = Label("持续覆盖翻译未开启。", 13);
+    internal readonly TextBlock ContinuousStatus = Label("选区覆盖翻译未开启。", 13);
     private readonly TabControl tabs = new();
     private readonly TextBlock shortcuts = Label("", 12);
     private readonly TextBlock helpSteps = Label("", 14, false, 16);
@@ -40,6 +40,7 @@ internal sealed class MainWindow : Window
     internal event Action? ContinuousPauseRequested;
     internal event Action? ContinuousOriginalRequested;
     internal event Action? ContinuousReadRequested;
+    internal event Action? ContinuousRefreshRequested;
     internal event Action? ContinuousEndRequested;
     private ApiSettings applied = new();
 
@@ -77,7 +78,7 @@ internal sealed class MainWindow : Window
         tabs.Items.Add(Tab("翻译", ReadingPanel()));
         tabs.Items.Add(Tab("API 配置", ApiPanel()));
         tabs.Items.Add(Tab("使用方法", HelpPanel()));
-        tabs.Items.Add(Tab("持续覆盖", ContinuousPanel()));
+        tabs.Items.Add(Tab("选区覆盖", ContinuousPanel()));
         root.Children.Add(tabs);
         Content = root;
         Closing += OnClosing;
@@ -144,21 +145,23 @@ internal sealed class MainWindow : Window
     private UIElement ContinuousPanel()
     {
         var panel = new StackPanel { Margin = new Thickness(22) };
-        panel.Children.Add(Label("在原位置持续阅读中文", 22, true));
-        panel.Children.Add(Label("手动选择一个窗口内的范围，停稳后把英／俄文字覆盖成中文。滚动后自动更新；原网页、软件和文件保持原样。", 14, false, 8));
+        panel.Children.Add(Label("截取一次，在原位置阅读中文", 22, true));
+        panel.Children.Add(Label("选择一个窗口内的范围，截取一次并把英／俄文字覆盖成中文。需要更新时点击「刷新选区」，重新截取当前内容。原网页、软件和文件保持原样。", 14, false, 8));
         var start = new WrapPanel { Margin = new Thickness(0, 14, 0, 18) };
         Add(start, "框选并开始", () => ContinuousRequested?.Invoke(false), true);
         Add(start, "选择整个窗口", () => ContinuousRequested?.Invoke(true));
         panel.Children.Add(start);
         panel.Children.Add(ContinuousStatus);
         var controls = new WrapPanel { Margin = new Thickness(0, 18, 0, 14) };
+        Add(controls, "刷新选区", () => ContinuousRefreshRequested?.Invoke(), true);
         Add(controls, "暂停／继续", () => ContinuousPauseRequested?.Invoke());
         Add(controls, "原文／中文", () => ContinuousOriginalRequested?.Invoke());
         Add(controls, "完整译文", () => ContinuousReadRequested?.Invoke());
         Add(controls, "结束", () => ContinuousEndRequested?.Invoke());
         panel.Children.Add(controls);
         panel.Children.Add(Label("覆盖层不接收点击；可直接点击、滚动原应用。按住 Ctrl+Alt+O 临时看原文，松开恢复。点击小控制条的「完整译文」可选择、复制或修正识别文字。", 13, false, 12));
-        panel.Children.Add(Label("切换到其他窗口、输入控件编辑或出现遮挡时暂时露出原文，回到目标窗口后恢复。此开发试用先验证局部阅读流程；长译文在完整阅读面板展开。", 13, false, 12));
+        panel.Children.Add(Label("译文对应最近一次截图。滚动或切换商品前可点击「看原文」，停在想读的内容后点击「刷新选区」。页面变化不会自动截图；暂停后继续也不会重新截图。", 13, false, 12));
+        panel.Children.Add(Label("切换到其他窗口、编辑输入框或出现遮挡时隐藏覆盖，返回后显示已有译文。窗口尺寸改变后需手动刷新。在这里点刷新后，请返回目标窗口完成本次截图。", 13, false, 12));
         panel.Children.Add(Label("截图只在本地识别；模型只接收文字。需先在 API 配置保存 Key。每次重新启动都关闭，不自动恢复采集。", 13, false, 12));
         return new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         static void Add(Panel panel, string text, Action action, bool primary = false) { var button = Button(text, primary); button.Click += (_, _) => action(); panel.Children.Add(button); }

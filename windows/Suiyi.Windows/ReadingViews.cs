@@ -32,7 +32,7 @@ internal sealed class ReadingOverlay : Forms.Form
         if (!ReadingWindow.ExcludeFromCapture(Handle))
         {
             Dispose();
-            throw new InvalidOperationException("当前 Windows 无法排除自家覆盖层。持续覆盖需要 Windows 10 2004 或更新版本；仍可使用单次框译。");
+            throw new InvalidOperationException("当前 Windows 无法排除自家覆盖层。选区覆盖需要 Windows 10 2004 或更新版本；仍可使用单次框译。");
         }
     }
 
@@ -86,12 +86,12 @@ internal sealed class ReadingControlBar : Window
     internal event Action? ReselectRequested;
     internal event Action? EndRequested;
     internal event Action? ReadRequested;
-    internal event Action? RetryRequested;
+    internal event Action? RefreshRequested;
 
     internal ReadingControlBar()
     {
-        Title = "随译 · 持续翻译控制";
-        Width = 540;
+        Title = "随译 · 选区覆盖控制";
+        Width = 570;
         SizeToContent = SizeToContent.Height;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
@@ -101,15 +101,16 @@ internal sealed class ReadingControlBar : Window
         Background = MainWindow.Brush("#F5F8F5");
         FontFamily = new FontFamily("Microsoft YaHei UI");
         var panel = new StackPanel { Margin = new Thickness(12, 8, 12, 10) };
-        var heading = MainWindow.Label("⋮⋮  随译 · 持续覆盖  |  拖动此处移动", 12, true);
+        var heading = MainWindow.Label("⋮⋮  随译 · 选区覆盖 · 手动刷新  |  拖动此处移动", 12, true);
+        heading.Cursor = System.Windows.Input.Cursors.SizeAll;
         heading.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
         panel.Children.Add(heading);
         panel.Children.Add(status);
         var buttons = new WrapPanel();
+        Add(MainWindow.Button("刷新选区", true), () => RefreshRequested?.Invoke());
         Add(pause, PauseRequestedHandler);
         Add(original, () => OriginalRequested?.Invoke());
         Add(MainWindow.Button("完整译文"), () => ReadRequested?.Invoke());
-        Add(MainWindow.Button("重试"), () => RetryRequested?.Invoke());
         Add(MainWindow.Button("重选"), () => ReselectRequested?.Invoke());
         Add(MainWindow.Button("结束"), () => EndRequested?.Invoke());
         panel.Children.Add(buttons);
@@ -126,10 +127,10 @@ internal sealed class ReadingControlBar : Window
     }
 
     private void PauseRequestedHandler() => PauseRequested?.Invoke();
-    internal void Update(ReadingSnapshot snapshot, bool paused, bool showOriginal)
+    internal void Update(ReadingSnapshot snapshot, bool paused, bool showOriginal, int captureCount)
     {
         status.Text = snapshot.Status;
-        count.Text = $"本次翻译请求 {snapshot.RequestCount}  ·  长译文请打开「完整译文」";
+        count.Text = $"截图 {captureCount} 次 · 翻译请求 {snapshot.RequestCount} 次 · 内容变化后请手动刷新";
         pause.Content = paused ? "继续" : "暂停";
         original.Content = showOriginal ? "显示中文" : "看原文";
     }
@@ -173,7 +174,7 @@ internal sealed class ReadingPanel : Window
         correct.Click += (_, _) => CorrectRequested?.Invoke(source.Text);
         actions.Children.Add(copy);
         actions.Children.Add(correct);
-        actions.Children.Add(MainWindow.Label("显示最近一次捕获内容；暂停期间非实时。返回目标窗口继续更新。", 12));
+        actions.Children.Add(MainWindow.Label("显示最近一次截图的内容；点击控制条「刷新选区」才会更新。", 12));
         DockPanel.SetDock(actions, Dock.Top);
         panel.Children.Add(actions);
         var grid = new Grid();

@@ -230,7 +230,8 @@ public sealed class GlobalInput : IDisposable
                     if ((data.Flags & 1) == 0) // Ignore injected mouse input.
                     {
                         var point = new DrawingPoint(data.Point.X, data.Point.Y);
-                        if (message == WmLeftDown) dragStart = point;
+                        if (message == WmLeftDown)
+                            dragStart = Native.GetWindowProcessId(WindowFromPoint(data.Point)) == Environment.ProcessId ? null : point;
                         else
                         {
                             DrawingPoint? start = dragStart;
@@ -291,6 +292,8 @@ public sealed class GlobalInput : IDisposable
     private static extern bool UnhookWindowsHookEx(IntPtr hook);
     [DllImport("user32.dll")]
     private static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(HookPoint point);
     [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? module);
 }

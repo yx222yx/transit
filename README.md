@@ -2,7 +2,9 @@
 
 一个持续迭代的英俄屏幕翻译工具，将英语、俄语翻译为简体中文。
 
-当前发布基线为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。[持续覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md) 已确认，[阶段 A：单选区持续覆盖翻译](https://github.com/yx222yx/transit/issues/2) 已提供开发试用，以 Lenta 购物网站进行人工验收。分析侧栏、配置保存和图片直传在后续阶段实现。用户明确确认定版前不生成新便携发布包。
+当前发布基线为 **0.1.0-alpha.1**，属于最初的 Alpha 阶段。Windows 为当前开发重点，Android 保留为后续方向。[选区覆盖翻译与分析侧栏 Spec](docs/specs/windows-continuous-translation.md) 已确认，[阶段 A：单选区覆盖翻译（手动刷新）](https://github.com/yx222yx/transit/issues/2) 已提供开发试用，以 Lenta 购物网站进行人工验收。分析侧栏、配置保存和图片直传在后续阶段实现。用户明确确认定版前不生成新便携发布包。
+
+最新开发版按试用反馈改为「选区覆盖」：开启时截取一次，之后点击「刷新选区」才更新，滚动和页面变化不自动截图。划译浮窗可拖动标题移动。请使用下方开发入口试用，具体操作见 [阶段 A 开发说明](docs/development.md#阶段-a-开发试用)。
 
 项目仓库：[yx222yx/transit](https://github.com/yx222yx/transit)。
 

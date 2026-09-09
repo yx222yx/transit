@@ -51,6 +51,7 @@ internal sealed class AppController : IDisposable
         main.ContinuousPauseRequested += () => continuous?.TogglePause();
         main.ContinuousOriginalRequested += () => continuous?.ToggleOriginal();
         main.ContinuousReadRequested += () => continuous?.ShowReading();
+        main.ContinuousRefreshRequested += () => continuous?.Refresh();
         main.ContinuousEndRequested += StopContinuous;
         popup.Dismissed += Cancel;
         popup.CopyRequested += Copy;
@@ -72,12 +73,13 @@ internal sealed class AppController : IDisposable
         automaticMenu = new Forms.ToolStripMenuItem("开启自动划译  " + PauseKey);
         automaticMenu.Click += (_, _) => SetAutomatic(!input.AutoSelectionEnabled);
         menu.Items.Add(automaticMenu);
-        menu.Items.Add("持续覆盖设置", null, (_, _) => main.ShowContinuous());
-        menu.Items.Add("框选并持续翻译  " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey), null, (_, _) => _ = StartContinuousAsync(false));
-        menu.Items.Add("选择整窗口持续翻译", null, (_, _) => _ = StartContinuousAsync(true));
-        menu.Items.Add("暂停／继续持续翻译  " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey), null, (_, _) => continuous?.TogglePause());
-        menu.Items.Add("持续翻译 · 原文／中文", null, (_, _) => continuous?.ToggleOriginal());
-        menu.Items.Add("结束持续翻译  " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey), null, (_, _) => StopContinuous());
+        menu.Items.Add("选区覆盖设置", null, (_, _) => main.ShowContinuous());
+        menu.Items.Add("框选并覆盖翻译  " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey), null, (_, _) => _ = StartContinuousAsync(false));
+        menu.Items.Add("选择整窗口覆盖翻译", null, (_, _) => _ = StartContinuousAsync(true));
+        menu.Items.Add("刷新选区 · 截取一次新内容", null, (_, _) => continuous?.Refresh());
+        menu.Items.Add("暂停／继续覆盖翻译  " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey), null, (_, _) => continuous?.TogglePause());
+        menu.Items.Add("覆盖翻译 · 原文／中文", null, (_, _) => continuous?.ToggleOriginal());
+        menu.Items.Add("结束覆盖翻译  " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey), null, (_, _) => StopContinuous());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出随译", null, (_, _) => Exit());
         trayIcon = AppIdentity.CreateTrayIcon();
@@ -90,7 +92,7 @@ internal sealed class AppController : IDisposable
         main.Show();
         main.ShowSettings();
         main.ConfigureHotkeys(SelectionKey, OcrKey, PauseKey, string.Join(" ", input.RegistrationNotes));
-        main.ContinuousStatus.Text = "持续覆盖未开启。框选开始 " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey) + "；暂停／继续 " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey) + "；结束 " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey) + "。";
+        main.ContinuousStatus.Text = "选区覆盖未开启。框选开始 " + input.GetHotkeyLabel(GlobalInput.StartContinuousHotkey) + "；暂停／继续 " + input.GetHotkeyLabel(GlobalInput.PauseContinuousHotkey) + "；结束 " + input.GetHotkeyLabel(GlobalInput.EndContinuousHotkey) + "。";
         if (input.RegistrationErrors.Count > 0)
             main.Status.Text = string.Join("\n", input.RegistrationErrors);
     }
@@ -156,9 +158,9 @@ internal sealed class AppController : IDisposable
                 var target = ReadingTarget.From(selection);
                 continuous = new ContinuousReadingController(target, translator, ocr, settings);
                 continuous.ReselectRequested += () => _ = StartContinuousAsync(false);
-                continuous.CorrectRequested += text => { SetSource(text); main.ShowReading(); main.Status.Text = "持续覆盖已暂停。修正原文后点击翻译，可在此对照阅读。"; };
+                continuous.CorrectRequested += text => { SetSource(text); main.ShowReading(); main.Status.Text = "选区覆盖已暂停。修正原文后点击翻译，可在此对照阅读。"; };
                 continuous.StatusChanged += status => main.ContinuousStatus.Text = status;
-                continuous.Ended += () => { continuous = null; main.ContinuousStatus.Text = "持续翻译已结束。"; };
+                continuous.Ended += () => { continuous = null; main.ContinuousStatus.Text = "覆盖翻译已结束。"; };
             }
         }
         catch (OperationCanceledException) { }
@@ -200,6 +202,7 @@ internal sealed class AppController : IDisposable
     private (int Id, CancellationToken Token) Begin()
     {
         Cancel();
+        popup.ResetPlacement();
         pending = new CancellationTokenSource();
         return (generation, pending.Token);
     }
